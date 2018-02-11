@@ -3,9 +3,9 @@ from difflib import SequenceMatcher
 import falcon
 from github import Github
 
-REPO_NAME = "Grover-c13/GithubErrorSubmission"
+REPO_NAME = "-"
 SIMILIAR_THRESHOLD = 0.7
-GITUSERNAME = "user"
+GITUSERNAME = "-"
 GITPASSWORD = "-"
 
 
@@ -17,7 +17,7 @@ class LogResource(object):
         repo = git.get_repo(REPO_NAME,)
         isposted = False
         for issue in repo.get_issues():
-            if (self.similiar(issue.title, identifier) > 0.7):
+            if SequenceMatcher(None, issue.body, stacktrace).ratio() > 0.7:
                 isposted = True
                 # this is probably a similiar issue, so attach it as comment
                 issue.create_comment(stacktrace)
@@ -27,6 +27,3 @@ class LogResource(object):
             repo.create_issue(identifier, body=stacktrace, labels=["Game Error"])
         resp.status = falcon.HTTP_200
         return
-
-    def similar(a, b):
-        return SequenceMatcher(None, a, b).ratio()
