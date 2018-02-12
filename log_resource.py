@@ -21,16 +21,17 @@ class LogResource(object):
         repo = git.get_repo(REPO_NAME)
         self.issues = []
         for issue in repo.get_issues():
-            issue_wrapper = IssueWrapper(issue)
-            for comment in issue.get_comments():
-                if "== STACKTRACK STATS ==" in comment.body:
-                    lines = comment.body.splitlines()
-                    for line in lines:
-                        if "Times seen:" in line:
-                            issue_wrapper.seen = int(line.replace("Times seen:", "").strip())
-                        if "Last reported:" in line:
-                            issue_wrapper.last_report = line.replace("Last reported:", "").strip()
-            self.issues.append(issue_wrapper)
+            if (issue.user.login != GITUSERNAME and issue.state == "open"):
+                issue_wrapper = IssueWrapper(issue)
+                for comment in issue.get_comments():
+                    if "== STACKTRACK STATS ==" in comment.body:
+                        lines = comment.body.splitlines()
+                        for line in lines:
+                            if "Times seen:" in line:
+                                issue_wrapper.seen = int(line.replace("Times seen:", "").strip())
+                            if "Last reported:" in line:
+                                issue_wrapper.last_report = line.replace("Last reported:", "").strip()
+                self.issues.append(issue_wrapper)
 
     def do_update(self):
         self.last_update = time.time()
