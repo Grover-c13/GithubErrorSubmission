@@ -6,11 +6,11 @@ import time
 import datetime
 from issue_wrapper import IssueWrapper
 
-REPO_NAME = "-"
+REPO_NAME = "Grover-c13/GithubErrorSubmission"
 SIMILIAR_THRESHOLD = 0.8
-GITUSERNAME = "-"
-GITPASSWORD = "-"
-
+GITUSERNAME = "StacktrackSubmission"
+GITPASSWORD = "Stacktrack1"
+UPDATE_TIME = 3600
 
 class LogResource(object):
     issues = None
@@ -44,7 +44,11 @@ class LogResource(object):
     def on_post(self, req, resp):
         identifier = req.get_param('identifier', required=True)
         stacktrace = req.get_param('stacktrace', required=True)
-        labels = req.get_param('labels', default=None)
+        labels = req.get_param_as_list('labels')
+        seen = req.get_param_as_int('seen')
+        if seen is None:
+            seen = 1
+        force = req.get_param_as_bool('force_update', blank_as_true=False)
         isposted = False
         for issue in self.issues:
             ratio = SequenceMatcher(None, issue.issue.body, stacktrace).ratio()
@@ -54,29 +58,21 @@ class LogResource(object):
                 issue.seen += 1
                 issue.last_report = datetime.datetime.now()
                 issue.needs_update = True
-                if labels is not None:
-                    [issue.issue.add_to_labels(label) for label in labels.split(",")]
 
         if not isposted:
             git = Github(GITUSERNAME, GITPASSWORD)
             repo = git.get_repo(REPO_NAME)
             # create new issue
-            if labels is not None:
-                issue = IssueWrapper(repo.create_issue(identifier, body="```cs\n" + stacktrace + "\n```", labels=labels.split(",")))
-                issue.seen = 1
-                issue.last_report = datetime.datetime.now()
-                issue.issue.create_comment(issue.get_stats())
-            else:
-                issue = IssueWrapper(repo.create_issue(identifier, body="```cs\n" + stacktrace + "\n```"))
-                issue.seen = 1
-                issue.last_report = datetime.datetime.now()
-                issue.issue.create_comment(issue.get_stats())
+            issue = IssueWrapper(repo.create_issue(identifier, body="```cs\n" + stacktrace + "\n```", labels=labels))
+            issue.seen = seen
+            issue.last_report = datetime.datetime.now()
+            issue.issue.create_comment(issue.get_stats())
             self.issues.append(issue)
         resp.status = falcon.HTTP_200
 
         # if its been an hour since the last update, do an update
-        if time.time()-self.last_update > 3600:
-            print("Doing github update " + str(time.time()) + " - " + str(self.last_update) + " = "  + str(time.time()-self.last_update))
+        if time.time()-self.last_update > UPDATE_TIME or force:
+            print("Doing github update")
             self.do_update()
 
         return
